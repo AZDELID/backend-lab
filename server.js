@@ -12,14 +12,17 @@ app.use(express.json());
 // CONFIGURACIÓN
 // ==========================================
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 const pool = new Pool({
-    user: "postgres",
-    host: "localhost",
-    database: "lab_control1",
-    password: "banana",
-    port: 5432,
+    user: process.env.DB_USER || "postgres",
+    host: process.env.DB_HOST || "localhost",
+    database: process.env.DB_NAME || "lab_control1",
+    password: process.env.DB_PASSWORD || "banana",
+    port: process.env.DB_PORT || 5432,
+    ssl: process.env.DB_SSL === "true"
+        ? { rejectUnauthorized: false }
+        : false
 });
 
 pool.query(`
@@ -131,9 +134,8 @@ app.post("/login", async (req, res) => {
             usuario = await pool.query(
                 `
                 INSERT INTO usuarios
-                (codigo, nombre, password, activo)
-                VALUES ($1, $2, $3, true)
-                RETURNING *
+(codigo, nombre, password)
+VALUES ($1,$2,$3)
                 `,
                 [
                     codigo,
@@ -374,18 +376,16 @@ app.get("/sesiones", async (req, res) => {
         const resultado = await pool.query(
             `
             SELECT
-                s.id,
-                u.codigo,
-                u.nombre,
-                p.nombre AS pc,
-                s.hora_inicio,
-                s.hora_fin
-            FROM sesiones s
-            INNER JOIN usuarios u
-                ON u.id = s.usuario_id
-            INNER JOIN pcs p
-                ON p.id = s.pc_id
-            ORDER BY s.id DESC
+    s.id,
+    s.codigo,
+    s.nombre,
+    p.nombre AS pc,
+    TO_CHAR(s.hora_inicio,'HH24:MI:SS') AS hora_inicio,
+    TO_CHAR(s.hora_fin,'HH24:MI:SS') AS hora_fin
+    FROM sesiones s
+    INNER JOIN pcs p
+    ON p.id=s.pc_id
+    ORDER BY s.id DESC
             `
         );
 
@@ -413,18 +413,5 @@ app.get("/", (req, res) => {
         ok: true,
         mensaje: "Backend Lab funcionando"
     });
-
-});
-
-// ==========================================
-
-app.listen(PORT, () => {
-
-    console.log("");
-    console.log("=================================");
-    console.log("🚀 Backend Lab iniciado");
-    console.log(`🌐 http://localhost:${PORT}`);
-    console.log("=================================");
-    console.log("");
 
 });
