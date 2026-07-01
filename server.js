@@ -15,12 +15,8 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 
 const pool = new Pool({
-    user: process.env.DB_USER || "postgres",
-    host: process.env.DB_HOST || "localhost",
-    database: process.env.DB_NAME || "lab_control1",
-    password: process.env.DB_PASSWORD || "banana",
-    port: process.env.DB_PORT || 5432,
-    ssl: process.env.DB_SSL === "true"
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === "production"
         ? { rejectUnauthorized: false }
         : false
 });
@@ -132,16 +128,17 @@ app.post("/login", async (req, res) => {
         if (usuario.rows.length === 0) {
 
             usuario = await pool.query(
-                `
-                INSERT INTO usuarios
-(codigo, nombre, password)
-VALUES ($1,$2,$3)
-                `,
-                [
-                    codigo,
-                    nombreCompleto,
-                    codigo
-                ]
+            `
+            INSERT INTO usuarios
+            (codigo, nombre, password)
+            VALUES ($1,$2,$3)
+            RETURNING *
+            `,
+            [
+                codigo,
+                nombreCompleto,
+                codigo
+            ]
             );
 
         } else {
@@ -413,5 +410,22 @@ app.get("/", (req, res) => {
         ok: true,
         mensaje: "Backend Lab funcionando"
     });
+
+});
+// ==========================================
+// INICIAR SERVIDOR
+// ==========================================
+app.get("/healthz", (req, res) => {
+    res.status(200).send("OK");
+});
+
+app.listen(PORT, () => {
+
+    console.log("");
+    console.log("=================================");
+    console.log("🚀 Backend Lab iniciado");
+    console.log(`🌐 Puerto: ${PORT}`);
+    console.log("=================================");
+    console.log("");
 
 });
